@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>デッキのタイトル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* 白 + 黒 + グレー + アクセント青 1 色。角丸・影・グラデーションなし。罫線で構造を作る */
+:root {
+  --paper: #ffffff; --ink: #000000; --ink2: #4d4d4d; --ink3: #8c8c8c; --rule: #e3e3e3; --fill: #ececec;
+  --accent: #0050d8;
+  --sans: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+/* 日英切替: L キー。もう一方の言語を隠す */
+:root[lang="ja"] .en, :root[lang="en"] .ja { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: #e6e6e6; color: var(--ink); font-family: var(--sans); overflow: hidden; -webkit-font-smoothing: antialiased; }
+.viewport { position: fixed; inset: 0; }
+/* 中央基準で配置してから縮小（ナビ 44px 分を除いた領域の中央） */
+.deck { width: 1600px; height: 900px; position: absolute; left: 50%; top: calc(50% - 22px); transform-origin: center center; transform: translate(-50%,-50%); }
+.slide { position: absolute; inset: 0; background: var(--paper); padding: 0 96px 64px; display: flex; flex-direction: column; overflow: hidden; }
+.slide:not(.on) { visibility: hidden; }
+
+/* 上部: 章名とページ番号（ページ番号は JS が入れる） */
+.meta { display: flex; justify-content: space-between; margin-top: 44px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); font: 500 17px var(--sans); color: var(--ink3); }
+h1, h2 { margin: 0; font-family: var(--sans); font-weight: 700; letter-spacing: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: 112px; }
+h2 { font-size: 56px; margin: 52px 0 0; }
+.sub { font: 500 26px var(--sans); color: var(--ink2); margin: 18px 0 0; line-height: 1.5; }
+.body { flex: 1; display: flex; flex-direction: column; margin-top: 44px; min-height: 0; }
+.note { font: 400 16px var(--sans); color: var(--ink3); }
+.lab { font: 500 16px var(--sans); color: var(--ink3); }
+.num { font-family: var(--sans); font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.accent { color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; background: var(--fill); padding: 1px 6px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .on .rise { animation: rise .6s ease-out both; animation-delay: var(--d, 0s); }
+}
+@keyframes rise { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 箇条書き（短い横線） */
+.li { font: 400 21px var(--sans); line-height: 1.5; padding-left: 22px; position: relative; }
+.li::before { content: ""; position: absolute; left: 0; top: .72em; width: 10px; height: 1.5px; background: var(--ink); }
+.li .d { display: block; font-size: 17px; color: var(--ink2); }
+
+/* 罫線の表。列幅は style="--g: ..." で指定 */
+.tbl { display: grid; border-top: 1.5px solid var(--ink); }
+.tbl > div { display: grid; grid-template-columns: var(--g); align-items: baseline; border-bottom: 1px solid var(--rule); padding: 14px 0; gap: 28px; font: 400 21px var(--sans); }
+.tbl > .th { padding: 10px 0; border-bottom: 1.5px solid var(--ink); font: 500 16px var(--sans); color: var(--ink3); }
+.tbl .k { font-weight: 700; }
+.tbl .d2 { color: var(--ink2); }
+
+/* 列（縦罫で区切る）。列数は style="--g: ..." で指定 */
+.cols { display: grid; grid-template-columns: var(--g, 1fr 1fr); border-top: 1.5px solid var(--ink); }
+.cols > div { padding: 18px 28px 0; border-left: 1px solid var(--rule); display: flex; flex-direction: column; gap: 12px; }
+.cols > div:first-child { padding-left: 0; border-left: none; }
+.cols h3 { margin: 0 0 4px; font: 700 28px var(--sans); }
+.cols.big .li { font-size: 26px; }
+
+/* サービス・ツールの説明（アイコン + 名前 + 1〜2 行） */
+.about { display: flex; gap: 32px; align-items: center; margin-top: 36px; padding: 22px 0; border-top: 1.5px solid var(--ink); }
+.about .icons { display: flex; gap: 14px; flex: none; }
+.about .abs { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.about .ab { font: 400 21px/1.55 var(--sans); color: var(--ink2); }
+.about .ab .t { font-weight: 700; color: var(--ink); margin-right: 14px; }
+.about + .body { margin-top: 0; }
+.ico { width: 84px; height: 84px; object-fit: contain; display: block; flex: none; }
+.ico.sm { width: 48px; height: 48px; }
+
+/* 一覧（アイコン + 名前 + 1 行説明、2 列） */
+.list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 56px; border-top: 1.5px solid var(--ink); }
+.list > div { display: flex; align-items: center; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.list .n { font: 700 24px var(--sans); }
+.list .d { font: 400 18px var(--sans); color: var(--ink2); margin-top: 4px; }
+
+/* 大きな数字 */
+.stat .num { font-size: 120px; }
+.stat .num small { font-size: 44px; margin-left: 6px; }
+.stat .cap { font: 500 22px/1.5 var(--sans); color: var(--ink2); margin-top: 16px; }
+
+/* ラベル付きブロック図。色だけで意味を持たせず、ブロックに名前を書く */
+.blocks { display: flex; gap: 4px; height: 64px; }
+.blocks > div { display: grid; place-items: center; font: 700 20px var(--sans); white-space: nowrap; background: var(--fill); }
+.blocks > .on2 { background: var(--accent); color: #fff; }
+.blocks > .out { background: transparent; border: 1.5px solid var(--ink); }
+.brace { border-top: 1.5px solid var(--ink); margin-top: 14px; padding-top: 10px; font: 500 18px var(--sans); }
+
+/* コード */
+pre { margin: 0; padding: 22px 26px; background: #f5f5f5; border-top: 1.5px solid var(--ink); font: 400 19px/1.6 var(--mono); color: var(--ink); white-space: pre-wrap; }
+pre .c { color: var(--ink3); }
+
+/* nav */
+.nav { position: fixed; left: 0; right: 0; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; justify-content: center; align-items: center; gap: 14px; font: 500 13px var(--sans); color: #666; pointer-events: none; }
+.nav button { pointer-events: auto; background: transparent; border: 1px solid #999; color: var(--ink); width: 34px; height: 28px; cursor: pointer; font: inherit; }
+.nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dots { display: flex; gap: 5px; }
+.dots i { width: 14px; height: 3px; background: #c4c4c4; }
+.dots i.on { background: var(--ink); }
+</style>
+</head>
+<body>
+<div class="viewport"><div class="deck" id="deck">
+
+<!-- 1 表紙 -->
+<section class="slide">
+  <div class="meta"><span><span class="ja">分野・発表の場</span><span class="en">Field or venue</span></span><span>2026-01-01</span></div>
+  <div style="margin-top:150px">
+    <h1><span class="ja">デッキの<br><span class="accent">タイトル</span></span><span class="en">Deck<br><span class="accent">title</span></span></h1>
+    <p class="sub" style="font-size:30px;margin-top:36px"><span class="ja">何を扱い、何が分かるかを一文で</span><span class="en">One sentence on the scope and the result</span></p>
+  </div>
+  <div style="margin-top:auto;border-top:1px solid var(--rule);padding-top:22px;display:flex;justify-content:space-between">
+    <span class="lab"><span class="ja">方法：どう調べたか</span><span class="en">Method: how it was done</span></span>
+    <span class="lab"><span class="ja">時点：調査日・対象バージョン</span><span class="en">As of: date and versions checked</span></span>
+  </div>
+</section>
+
+<!-- 2 問題 → 危険 → 対処（1 件 1 枚） -->
+<section class="slide">
+  <div class="meta"><span><span class="ja">章名</span><span class="en">Section</span></span><span class="pg"></span></div>
+  <h2><span class="ja">見出しには元の問題を一文で書く</span><span class="en">The heading states the problem in one sentence</span></h2>
+  <div class="about rise"><div class="icons"><img class="ico" src="icons/example.svg" alt="Example"></div><div class="abs"><div class="ab"><span class="t">Example</span><span class="ja">ツールやサービスの説明。正確な用語（平易な言い換え）の形で 1〜2 行。</span><span class="en">What the tool or service is. Use the exact term (a plain explanation) in one or two lines.</span></div></div></div>
+  <div class="body">
+    <div class="cols big" style="border-top-width:1px;border-top-color:var(--rule)">
+      <div>
+        <div class="lab"><span class="ja">危険</span><span class="en">Risk</span></div>
+        <div class="li"><span class="ja">何が起こりえたか</span><span class="en">What could have happened</span></div>
+        <div class="li"><span class="ja">誰が・どこから届いたか</span><span class="en">Who could reach it, and from where</span></div>
+      </div>
+      <div>
+        <div class="lab"><span class="ja">対処</span><span class="en">Fix</span></div>
+        <div class="li"><span class="ja">何をしたか</span><span class="en">What was done</span></div>
+        <div class="li"><span class="ja">どう確認したか</span><span class="en">How it was confirmed</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 一覧（アイコン + 1 行紹介） -->
+<section class="slide">
+  <div class="meta"><span><span class="ja">対象</span><span class="en">Scope</span></span><span class="pg"></span></div>
+  <h2><span class="ja">比較する 4 つの対象</span><span class="en">The four things compared</span></h2>
+  <div class="body" style="margin-top:36px">
+    <div class="list">
+      <div><img class="ico sm" src="icons/example.svg" alt=""><div><div class="n">Item A</div><div class="d"><span class="ja">開発元。何をするものかを 1 行で</span><span class="en">Maker. What it does, in one line</span></div></div></div>
+      <div><img class="ico sm" src="icons/example.svg" alt=""><div><div class="n">Item B</div><div class="d"><span class="ja">開発元。何をするものかを 1 行で</span><span class="en">Maker. What it does, in one line</span></div></div></div>
+      <div><img class="ico sm" src="icons/example.svg" alt=""><div><div class="n">Item C</div><div class="d"><span class="ja">開発元。何をするものかを 1 行で</span><span class="en">Maker. What it does, in one line</span></div></div></div>
+      <div><img class="ico sm" src="icons/example.svg" alt=""><div><div class="n">Item D</div><div class="d"><span class="ja">開発元。何をするものかを 1 行で</span><span class="en">Maker. What it does, in one line</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 罫線の表 -->
+<section class="slide">
+  <div class="meta"><span><span class="ja">比較</span><span class="en">Comparison</span></span><span class="pg"></span></div>
+  <h2><span class="ja">表の見出しも結論を書く</span><span class="en">A table slide also leads with its conclusion</span></h2>
+  <div class="body">
+    <div class="tbl" style="--g:220px 1fr 1fr">
+      <div class="th"><span><span class="ja">対象</span><span class="en">Item</span></span><span><span class="ja">そのまま残す</span><span class="en">Kept as is</span></span><span><span class="ja">要約・破棄</span><span class="en">Summarized or removed</span></span></div>
+      <div><span class="k">Item A</span><span><span class="ja">直近のターン</span><span class="en">Recent turns</span></span><span class="d2"><span class="ja">古い履歴</span><span class="en">Older history</span></span></div>
+      <div><span class="k">Item B</span><span><span class="ja">user の発言</span><span class="en">User messages</span></span><span class="d2"><span class="ja">応答と tool 出力</span><span class="en">Replies and tool output</span></span></div>
+      <div><span class="k">Item C</span><span class="accent"><span class="ja">要点はこの 1 か所だけ青</span><span class="en">Only the key point is blue</span></span><span class="d2"><span class="ja">全体</span><span class="en">Everything</span></span></div>
+    </div>
+    <div class="note" style="margin-top:auto"><span class="ja">注記：数字の前提、推定かどうか、出典</span><span class="en">Note: assumptions, whether a value is a guess, and the source</span></div>
+  </div>
+</section>
+
+<!-- 5 大きな数字 -->
+<section class="slide">
+  <div class="meta"><span><span class="ja">結果</span><span class="en">Results</span></span><span class="pg"></span></div>
+  <h2><span class="ja">数字は大きく、意味は下に書く</span><span class="en">Show the number large, its meaning below</span></h2>
+  <div class="body" style="justify-content:center">
+    <div class="cols" style="--g:1fr 1fr 1fr">
+      <div class="stat rise"><div class="num accent">−50<small>%</small></div><div class="cap"><span class="ja">何が・何と比べて減ったか</span><span class="en">What dropped, compared with what</span></div></div>
+      <div class="stat rise" style="--d:.1s"><div class="num">1k</div><div class="cap"><span class="ja">単位と条件を添える</span><span class="en">Give the unit and the condition</span></div></div>
+      <div class="stat rise" style="--d:.2s"><div class="num">6<small>/ 10</small></div><div class="cap"><span class="ja">分母を書く</span><span class="en">Show the total</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 ラベル付きの図 -->
+<section class="slide">
+  <div class="meta"><span><span class="ja">仕組み</span><span class="en">How it works</span></span><span class="pg"></span></div>
+  <h2><span class="ja">図のブロックには名前を書く</span><span class="en">Every block in a diagram has a name</span></h2>
+  <div class="body" style="gap:40px">
+    <div>
+      <div class="lab" style="margin-bottom:10px"><span class="ja">通常のリクエスト</span><span class="en">Normal request</span></div>
+      <div class="blocks"><div style="flex:2">system</div><div style="flex:2">tools</div><div style="flex:5"><span class="ja">会話履歴</span><span class="en">History</span></div><div class="out" style="flex:2"><span class="ja">次の発言</span><span class="en">Next message</span></div></div>
+    </div>
+    <div>
+      <div class="lab" style="margin-bottom:10px;color:var(--accent)"><span class="ja">要約リクエスト</span><span class="en">Summary request</span></div>
+      <div class="blocks"><div style="flex:2">system</div><div style="flex:2">tools</div><div style="flex:5"><span class="ja">会話履歴</span><span class="en">History</span></div><div class="on2" style="flex:2"><span class="ja">要約の指示</span><span class="en">Summary prompt</span></div></div>
+      <div class="brace" style="width:calc(9 / 11 * 100%)"><span class="ja">ここまで同じ → prompt cache が効く</span><span class="en">Same up to here, so the prompt cache works</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 付録・出典 -->
+<section class="slide">
+  <div class="meta"><span><span class="ja">付録</span><span class="en">Appendix</span></span><span class="pg"></span></div>
+  <h2><span class="ja">出典と確認した時点</span><span class="en">Sources and when they were checked</span></h2>
+  <div class="body">
+    <div class="tbl" style="--g:260px 1fr 180px">
+      <div class="th"><span><span class="ja">対象</span><span class="en">Item</span></span><span><span class="ja">出典</span><span class="en">Source</span></span><span><span class="ja">確認日</span><span class="en">Checked</span></span></div>
+      <div><span class="k">Item A</span><span class="d2"><code>repo@commit</code> / <span class="ja">公式ドキュメント</span><span class="en">official docs</span></span><span class="d2">2026-01-01</span></div>
+      <div><span class="k">Item B</span><span class="d2"><span class="ja">リリースノート v1.2.3（推定を含む）</span><span class="en">Release notes v1.2.3 (includes a guess)</span></span><span class="d2">2026-01-01</span></div>
+    </div>
+  </div>
+</section>
+
+</div></div>
+
+<div class="nav"><button id="prev" aria-label="前のスライド">←</button><div class="dots" id="dots"></div><span id="count"></span><button id="next" aria-label="次のスライド">→</button><button id="lang" aria-label="Toggle language (L)" style="width:auto;padding:0 8px">EN</button></div>
+
+<script>
+const TITLE = { ja: "デッキのタイトル", en: "Deck title" };
+const slides = [...document.querySelectorAll(".slide")], deck = document.getElementById("deck");
+const dots = document.getElementById("dots"); dots.innerHTML = slides.map(() => "<i></i>").join("");
+// ページ番号（.meta の .pg）
+const pad = n => String(n).padStart(2, "0");
+slides.forEach((s,k) => { const p = s.querySelector(".meta .pg"); if (p) p.textContent = `${pad(k+1)} / ${slides.length}`; });
+let cur = 0;
+function show(i) {
+  cur = Math.max(0, Math.min(slides.length-1, i));
+  slides.forEach((s,k) => s.classList.toggle("on", k===cur));
+  [...dots.children].forEach((d,k) => d.classList.toggle("on", k===cur));
+  document.getElementById("count").textContent = `${cur+1} / ${slides.length}`;
+  try { history.replaceState(null, "", location.search + "#s" + (cur+1)); } catch (e) {}
+}
+function fit() { const s = Math.min(innerWidth/1600, (innerHeight-44)/900); deck.style.transform = `translate(-50%,-50%) scale(${s})`; }
+addEventListener("resize", fit);
+addEventListener("keydown", e => {
+  if (["ArrowRight","PageDown"," ","Enter"].includes(e.key)) { e.preventDefault(); show(cur+1); }
+  if (["ArrowLeft","PageUp","Backspace"].includes(e.key)) { e.preventDefault(); show(cur-1); }
+  if (e.key === "Home") show(0); if (e.key === "End") show(slides.length-1);
+  if ((e.key === "l" || e.key === "L") && !e.metaKey && !e.ctrlKey && !e.altKey) toggleLang();
+});
+document.getElementById("next").onclick = () => show(cur+1);
+document.getElementById("prev").onclick = () => show(cur-1);
+deck.addEventListener("click", e => { if (e.target.closest("button")) return; const r = deck.getBoundingClientRect(); show(e.clientX > r.left + r.width/2 ? cur+1 : cur-1); });
+// 言語（?lang=en で指定、選択は localStorage に保存）
+function setLang(l) {
+  document.documentElement.lang = l;
+  document.title = TITLE[l];
+  document.getElementById("lang").textContent = l === "en" ? "JA" : "EN";
+  try { localStorage.setItem("lang", l); } catch (e) {}
+}
+const toggleLang = () => setLang(document.documentElement.lang === "en" ? "ja" : "en");
+document.getElementById("lang").onclick = toggleLang;
+let saved = null; try { saved = localStorage.getItem("lang"); } catch (e) {}
+const q = new URLSearchParams(location.search).get("lang");
+setLang(q === "en" || q === "ja" ? q : saved === "en" ? "en" : "ja");
+const m = location.hash.match(/^#s(\d+)$/); fit(); show(m ? +m[1]-1 : 0);
+</script>
+</body>
+</html>
