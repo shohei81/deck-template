@@ -63,3 +63,7 @@ AGENTS.md            AI エージェント向けの手順
 scripts/screenshot.sh
 docs/                README 用のプレビュー画像
 ```
+
+## ライセンス
+
+[MIT](LICENSE)
