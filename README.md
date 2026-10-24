@@ -39,7 +39,8 @@ URL で開き方を指定できる。`my-talk.html#s5` は 5 枚目から、`my-
 | 4 | 罫線の表 | 項目ごとの比較 |
 | 5 | 大きな数字 | 結果の数値 |
 | 6 | ラベル付きの図 | 仕組みの説明 |
-| 7 | 付録・出典 | 出典と確認日 |
+| 7 | 手順と数式 | 付録の技術的な補足。式の下に意味を書く |
+| 8 | 付録・出典 | 出典と確認日 |
 
 ## スクリーンショット
 
@@ -47,7 +48,15 @@ URL で開き方を指定できる。`my-talk.html#s5` は 5 枚目から、`my-
 scripts/screenshot.sh my-talk.html screenshots
 ```
 
-全スライドを日英両方で撮る。ローカルの Google Chrome か Chromium を使い、パスは `CHROME` 環境変数で上書きできる。
+全スライドを日英両方、原寸（1600×944）と縮小がかかるサイズ（1280×800）で撮る。撮る前に `scripts/check.sh` でタグの対応を確かめる。ローカルの Google Chrome か Chromium を使い、パスは `CHROME` 環境変数で上書きできる。
+
+## PDF
+
+```bash
+scripts/pdf.sh my-talk.html my-talk-en.pdf en
+```
+
+1 ページ 1 スライド（1600×900）で書き出す。ナビと切り替えのアニメーションは消える。
 
 ## AI エージェントで使う
 
@@ -56,12 +65,14 @@ scripts/screenshot.sh my-talk.html screenshots
 ## 構成
 
 ```
-template.html        テンプレート本体（CSS と JS を内包）
-icons/               アイコン（HTML と一緒に配布する）
-PRINCIPLES.md        書き方とデザインの原則
-AGENTS.md            AI エージェント向けの手順
-scripts/screenshot.sh
-docs/                README 用のプレビュー画像
+template.html          テンプレート本体（CSS と JS を内包）
+icons/                 アイコン（HTML と一緒に配布する）
+PRINCIPLES.md          書き方とデザインの原則
+AGENTS.md              AI エージェント向けの手順
+scripts/screenshot.sh  全スライドのスクリーンショット
+scripts/check.sh       タグの対応のチェック
+scripts/pdf.sh         PDF の書き出し
+docs/                  README 用のプレビュー画像
 ```
 
 ## ライセンス
